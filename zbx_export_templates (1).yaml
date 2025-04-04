@@ -1,0 +1,121 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+  templates:
+    - uuid: dc2bbed60be44329b3e2ccb0c4363561
+      template: TEMPLATE-NET-MTR
+      name: TEMPLATE-NET-MTR
+      description: |
+        Created by Marco Hofmann
+        https://www.meinekleinefarm.net/zabbix-template-net-mtr-my-traceroute/
+        https://github.com/xenadmin/zabbix-templates/tree/master/zabbix-net-mtr
+        
+        Tested on Debian Stable
+        apt install mtr-tiny
+        https://packages.debian.org/stable/mtr-tiny
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: 1007faf4cdfd4143a04fc52fb7cab818
+          name: 'MTR Trace Master'
+          type: EXTERNAL
+          key: 'mtr.sh[{HOST.IP}]'
+          history: '0'
+          value_type: TEXT
+          trends: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.report.hubs
+          tags:
+            - tag: Application
+              value: 'Master Items'
+      discovery_rules:
+        - uuid: 5604b62072a04c6da7cab8e83ee84039
+          name: 'MTR Hops'
+          type: DEPENDENT
+          key: mtr.hop.discovery
+          delay: '0'
+          lifetime_type: DELETE_IMMEDIATELY
+          lifetime: '0'
+          item_prototypes:
+            - uuid: af529af30c9d4cd19404017d489c7131
+              name: 'MTR Hop {#HOP_ID}: {#HOP_HOST} - Average RTT(ms)'
+              type: DEPENDENT
+              key: 'mtr.hop.avg[{#HOP_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: FLOAT
+              trends: 180d
+              units: '!ms'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.[?(@.count == "{#HOP_ID}")]["Avg"].first()'
+              master_item:
+                key: 'mtr.sh[{HOST.IP}]'
+              tags:
+                - tag: Application
+                  value: 'MTR Average RTT(ms)'
+            - uuid: 8f4adb30c996408f8b1bcfaa83206577
+              name: 'MTR Hop {#HOP_ID}: {#HOP_HOST}'
+              type: DEPENDENT
+              key: 'mtr.hop.host[{#HOP_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: TEXT
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.[?(@.count == "{#HOP_ID}")].host.first()'
+              master_item:
+                key: 'mtr.sh[{HOST.IP}]'
+              tags:
+                - tag: Application
+                  value: 'MTR Hosts'
+            - uuid: d54e5c24a45541f39e4cb6ba8c514307
+              name: 'MTR Hop {#HOP_ID}: {#HOP_HOST} -Jitter'
+              type: DEPENDENT
+              key: 'mtr.hop.jitter[{#HOP_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: FLOAT
+              trends: 180d
+              units: ms
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.[?(@.count == "{#HOP_ID}")]["StDev"].first()'
+              master_item:
+                key: 'mtr.sh[{HOST.IP}]'
+              tags:
+                - tag: Application
+                  value: 'MTR Jitter'
+            - uuid: 85a830226cde475d9547bc692f7b29f0
+              name: 'MTR Hop {#HOP_ID}: {#HOP_HOST} - ICMP Loss%'
+              type: DEPENDENT
+              key: 'mtr.hop.loss[{#HOP_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: FLOAT
+              trends: 180d
+              units: '%'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.[?(@.count == "{#HOP_ID}")]["Loss%"].first()'
+              master_item:
+                key: 'mtr.sh[{HOST.IP}]'
+              tags:
+                - tag: Application
+                  value: 'MTR Loss%'
+          master_item:
+            key: 'mtr.sh[{HOST.IP}]'
+          lld_macro_paths:
+            - lld_macro: '{#HOP_HOST}'
+              path: '$.[''host'']'
+            - lld_macro: '{#HOP_ID}'
+              path: '$.[''count'']'
